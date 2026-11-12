@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: central-nuevo-futuro
+    runtime: node
+    buildCommand: npm install --omit=dev
+    startCommand: npm start
+    envVars:
+      - key: NF_TOKEN
+        sync: false
+      - key: NF_ADMIN_TOKEN
+        sync: false
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: ./data
+# El disco local de Render gratuito es efímero. Para retención entre despliegues,
+# configurar almacenamiento persistente propio antes de usar en producción.

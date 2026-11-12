@@ -1,9 +1,1 @@
-
-{
-  "name": "central-monitoreo-nuevo-futuro",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "start": "node server.js"
-  }
-}
+{"name":"nuevo-futuro-central","version":"0.11.0","private":true,"scripts":{"start":"node server.js","test":"node --test"},"engines":{"node":">=20"}}
