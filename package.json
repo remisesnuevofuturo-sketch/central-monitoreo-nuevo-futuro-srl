@@ -1,1 +1,1 @@
-{"name":"nuevo-futuro-central","version":"0.12.3","private":true,"scripts":{"start":"node server.js","test":"node --test"},"engines":{"node":">=20"}}
+{"name":"nuevo-futuro-central","version":"0.12.5","private":true,"scripts":{"start":"node server.js","test":"node --test"},"engines":{"node":">=20"}}
