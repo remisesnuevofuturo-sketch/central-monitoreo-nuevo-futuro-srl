@@ -4,14 +4,14 @@ const dir=process.env.DATA_DIR||path.join(__dirname,'data');fs.mkdirSync(dir,{re
 function read(name,fallback){try{return JSON.parse(fs.readFileSync(path.join(dir,name),'utf8'))}catch(e){if(e.code!=='ENOENT')throw e;return fallback}}
 function write(name,data){const p=path.join(dir,name);fs.writeFileSync(p+'.tmp',JSON.stringify(data));fs.renameSync(p+'.tmp',p)}
 const state=read('operations.json',{zones:[],alarms:[],alarmEvents:[]});
-state.profiles=state.profiles||{};
+state.profiles=Object.assign(Object.create(null),state.profiles||{});
 const equal=(a,b)=>typeof a==='string'&&typeof b==='string'&&Buffer.byteLength(a)===Buffer.byteLength(b)&&crypto.timingSafeEqual(Buffer.from(a),Buffer.from(b));
 function authorized(req,url,token){return equal((req.headers.authorization||'').replace(/^Bearer /i,''),token)||equal(req.headers.cookie?.split('; ').find(x=>x.startsWith('nf_session='))?.slice(11),session)}
 function operator(req){return equal(req.headers.cookie?.split('; ').find(x=>x.startsWith('nf_session='))?.slice(11),session)}
 const failures=new Map();
 const session=crypto.randomBytes(32).toString('hex');
 const save=()=>write('operations.json',state);
-function vehicleFields(d){return {safeZone:d.safeZone===true,alarmEnabled:d.alarmEnabled===true,officeConsent:d.officeConsent===true,preparationMinutes:Number.isInteger(d.preparationMinutes)?d.preparationMinutes:30,protocolVersion:d.protocolVersion===11?11:10,remoteConsent:d.remoteConsent===true,gpsActive:d.gpsActive===true,shiftActive:d.shiftActive===true,dashcamConsent:d.dashcamConsent===true,dashcamStatus:String(d.dashcamStatus||'inactiva').slice(0,160),lastFixAt:Number.isFinite(d.lastFixAt)?d.lastFixAt:0}}
+function vehicleFields(d){return {safeZone:d.safeZone===true,alarmEnabled:d.alarmEnabled===true,officeConsent:d.officeConsent===true,preparationMinutes:Number.isInteger(d.preparationMinutes)?d.preparationMinutes:30,protocolVersion:[11,12].includes(d.protocolVersion)?d.protocolVersion:10,monitorActive:typeof d.monitorActive==='boolean'?d.monitorActive:null,monitorState:['active','off','paused','interrupted','starting'].includes(d.monitorState)?d.monitorState:'unknown',gpsSharing:typeof d.gpsSharing==='boolean'?d.gpsSharing:null,remoteConsent:d.remoteConsent===true,gpsActive:d.gpsActive===true,shiftActive:d.shiftActive===true,dashcamConsent:d.dashcamConsent===true,dashcamActive:typeof d.dashcamActive==='boolean'?d.dashcamActive:null,dashcamStatus:String(d.dashcamStatus||'inactiva').slice(0,160),lastFixAt:Number.isFinite(d.lastFixAt)?d.lastFixAt:0}}
 function route(req,res,url,vehicles,token,send,broadcast,snapshot){
  const p=url.pathname;if(!['/api/login','/api/logout','/api/admin','/api/device'].includes(p))return false;
  if(req.method!=='POST'){send(res,405,{error:'Usar POST'});return true}
@@ -21,8 +21,8 @@ function route(req,res,url,vehicles,token,send,broadcast,snapshot){
  if(p==='/api/logout'){res.setHeader('Set-Cookie','nf_session=; Max-Age=0; Path=/');return send(res,200,{ok:true})}
  const device=equal((req.headers.authorization||'').replace(/^Bearer /i,''),token);
  if(p==='/api/device'){
- if(!device||typeof d.vehicleId!=='string'||!/^[-\w ]{1,30}$/.test(d.vehicleId))return send(res,401,{error:'No autorizado'});
- if(d.profile){state.profiles[d.vehicleId]={...vehicleFields(d.profile),vehicleId:d.vehicleId,driverName:String(d.profile.driverName||'').slice(0,80),lastSeen:Date.now()}}
+ if(!device||typeof d.vehicleId!=='string'||!require('./fleet').validId(d.vehicleId))return send(res,401,{error:'No autorizado'});
+ if(d.profile){state.profiles[d.vehicleId]={...vehicleFields(d.profile),vehicleId:d.vehicleId,driverName:String(d.profile.driverName||'').slice(0,80),lastSeen:Date.now()};if(d.profile.dashcamActive===false||d.profile.dashcamConsent===false)require('./fleet').clearFrame(d.vehicleId)}
  if(d.action==='zoneRequest'){
  if(typeof d.name!=='string'||!d.name.trim()||!Number.isFinite(d.lat)||Math.abs(d.lat)>90||!Number.isFinite(d.lon)||Math.abs(d.lon)>180) return send(res,400,{error:'Zona inválida'});
  if(!state.zones.some(z=>z.requestId===d.requestId&&z.vehicleId===d.vehicleId))state.zones.push({id:Date.now(),requestId:d.requestId,name:d.name.slice(0,70),lat:d.lat,lon:d.lon,radius:100,status:'pendiente',vehicleId:d.vehicleId});
@@ -30,9 +30,9 @@ function route(req,res,url,vehicles,token,send,broadcast,snapshot){
  if(d.action==='alarmEvent'&&['scheduled','ringing','dismissed','cancelled','permission_required'].includes(d.event)){
  if(!state.alarmEvents.some(e=>e.eventId===d.eventId&&e.vehicleId===d.vehicleId))state.alarmEvents.push({vehicleId:d.vehicleId,eventId:d.eventId,event:d.event,alarmId:d.alarmId,occurredAt:Number.isFinite(d.occurredAt)?d.occurredAt:Date.now(),time:Date.now()});state.alarmEvents=state.alarmEvents.slice(-2000);
  }
- if(d.action==='monitorAck'){if(d.status==='active'){const q=(state.requests||[]).find(q=>q.id===d.id&&q.vehicleId===d.vehicleId),v=vehicles.get(d.vehicleId);if(!v||Date.now()-v.receivedAt>45000||Date.now()-(v.fixAt||0)>45000||(v.fixAt||0)<(q?.createdAt||Infinity))return send(res,409,{error:'Falta telemetría GPS reciente para confirmar activación'})}if(!require('./fleet').ack(state,d))return send(res,409,{error:'Transición de solicitud inválida'})}
+ if(d.action==='monitorAck'){if(d.status==='active'){const profile=state.profiles[d.vehicleId];if(profile?.protocolVersion>=12&&(!profile.gpsSharing||!profile.gpsActive))return send(res,409,{error:'El teléfono no informa GPS autorizado y activo'});const q=(state.requests||[]).find(q=>q.id===d.id&&q.vehicleId===d.vehicleId),v=vehicles.get(d.vehicleId);if(!v||Date.now()-v.receivedAt>45000||Date.now()-(v.fixAt||0)>45000||(v.fixAt||0)<(q?.authorizedAt||Infinity))return send(res,409,{error:'Falta telemetría GPS reciente para confirmar activación'})}if(!require('./fleet').ack(state,d))return send(res,409,{error:'Transición de solicitud inválida'})}
  if(d.action==='ack') {const a=state.alarms.find(a=>a.id===d.id&&a.vehicleId===d.vehicleId);if(a)a.status=d.status==='accepted'?'accepted':'rejected'}
- const requests=require('./fleet').pending(state,d.vehicleId);save();return send(res,200,{requests,zones:state.zones.filter(z=>!z.vehicleId||z.vehicleId===d.vehicleId),alarms:(state.profiles[d.vehicleId]||vehicles.get(d.vehicleId))?.officeConsent?state.alarms.filter(a=>a.vehicleId===d.vehicleId&&a.status==='pending'):[]});
+ const requests=require('./fleet').pending(state,d.vehicleId);save();broadcast(snapshot());return send(res,200,{requests,zones:state.zones.filter(z=>!z.vehicleId||z.vehicleId===d.vehicleId),alarms:(state.profiles[d.vehicleId]||vehicles.get(d.vehicleId))?.officeConsent?state.alarms.filter(a=>a.vehicleId===d.vehicleId&&a.status==='pending'):[]});
  }
  // Administrative writes require the operator session, never the telemetry key.
  if(!equal(req.headers.cookie?.split('; ').find(x=>x.startsWith('nf_session='))?.slice(11),session))return send(res,403,{error:'Sesión administrativa requerida'});
