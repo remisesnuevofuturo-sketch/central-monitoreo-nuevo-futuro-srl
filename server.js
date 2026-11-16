@@ -21,9 +21,14 @@ function alertRecord(d,now,hasPosition){
   locationAgeMs:hasPosition?age:null,locationStatus:!hasPosition?'missing':age===null?'unknown':age>45000?'stale':'recent',
   accuracyM:hasPosition&&Number.isFinite(d.accuracyM)&&d.accuracyM>=0?d.accuracyM:null};
 }
-function snapshot(){const phases=JSON.stringify((extension.state.requests||[]).map(q=>q.status));fleet.pending(extension.state,'');if(phases!==JSON.stringify(extension.state.requests.map(q=>q.status)))extension.save();return {version:'0.12.5',controls:Object.fromEntries([...new Set([...vehicles.keys(),...Object.keys(extension.state.profiles)])].map(id=>[id,fleet.controlState(extension.state.profiles[id],vehicles.get(id))])),requests:extension.state.requests||[],drivers:Object.values(extension.state.profiles),zones:extension.state.zones,alarms:extension.state.alarms,alarmEvents:extension.state.alarmEvents,vehicles:[...vehicles.values()].map(v=>({...v,online:Date.now()-v.receivedAt<45000&&fleet.controlState(extension.state.profiles[v.vehicleId],v).gps!=='off'})),events:events.slice(-100).reverse(),serverTime:Date.now()}}
+function snapshot(){const phases=JSON.stringify((extension.state.requests||[]).map(q=>q.status));fleet.pending(extension.state,'');if(phases!==JSON.stringify(extension.state.requests.map(q=>q.status)))extension.save();return {version:'0.12.8',controls:Object.fromEntries([...new Set([...vehicles.keys(),...Object.keys(extension.state.profiles)])].map(id=>[id,fleet.controlState(extension.state.profiles[id],vehicles.get(id))])),requests:extension.state.requests||[],drivers:Object.values(extension.state.profiles),zones:extension.state.zones,alarms:extension.state.alarms,alarmEvents:extension.state.alarmEvents,vehicles:[...vehicles.values()].map(v=>({...v,online:Date.now()-v.receivedAt<45000&&fleet.controlState(extension.state.profiles[v.vehicleId],v).gps!=='off'})),events:events.slice(-100).reverse(),serverTime:Date.now()}}
 const server=http.createServer((req,res)=>{
  const url=new URL(req.url,'http://localhost');
+ if(url.pathname==='/api/maps/resolve'){
+  if(!extension.operator(req))return send(res,403,{error:'Sesión administrativa requerida'});
+  if(req.method!=='POST')return send(res,405,{error:'Usar POST'});
+  let body='';req.on('data',chunk=>{body+=chunk;if(body.length>8000)req.destroy()});req.on('end',async()=>{try{const data=JSON.parse(body);const result=await require('./maps-links').resolve(data.url);send(res,200,result)}catch(e){send(res,400,{error:e.message||'No se pudo leer el enlace'})}});return;
+ }
  if(fleet.route(req,res,url,extension,vehicles,TOKEN,send,broadcast,snapshot))return;
  if(extension.route(req,res,url,vehicles,TOKEN,send,broadcast,snapshot))return;
  if(url.pathname.startsWith('/api/') && !extension.authorized(req,url,TOKEN))return send(res,401,{error:'Autenticación requerida'});
@@ -31,7 +36,7 @@ const server=http.createServer((req,res)=>{
  if(req.method==='GET'&&url.pathname==='/api/state')return send(res,200,snapshot());
  if(req.method==='GET'&&url.pathname==='/api/alerts/export'){
   res.setHeader('Content-Disposition','attachment; filename="nuevo-futuro-alertas.json"');
-  return send(res,200,{version:'0.12.5',timeZone:'America/Argentina/Buenos_Aires',exportedAt:Date.now(),events:events.slice().reverse()});
+  return send(res,200,{version:'0.12.8',timeZone:'America/Argentina/Buenos_Aires',exportedAt:Date.now(),events:events.slice().reverse()});
  }
  if(req.method==='GET'&&url.pathname==='/api/stream'){
   res.writeHead(200,{'Content-Type':'text/event-stream','Cache-Control':'no-cache, no-transform','Connection':'keep-alive','X-Content-Type-Options':'nosniff'});

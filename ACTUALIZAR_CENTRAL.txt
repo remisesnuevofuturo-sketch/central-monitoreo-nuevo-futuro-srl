@@ -1,0 +1,25 @@
+CENTRAL NUEVO FUTURO 0.12.8
+
+Proponer una alarma:
+1. Elegir chofer y tocar Proponer alarma.
+2. Elegir Hoy, Mañana o una fecha en el calendario.
+3. Seleccionar hora y minutos (24 horas, Argentina).
+4. Revisar cuándo sonará y tocar Enviar propuesta.
+
+El cálculo desde la llegada es opcional. No hace falta completar destino ni
+viaje para proponer una alarma con horario directo.
+También hay acceso a Proponer alarma dentro del detalle del móvil.
+El estado de envío se muestra debajo de los choferes; pendiente no significa
+que la alarma ya esté guardada en el teléfono.
+
+Publicación pendiente: este ZIP no actualiza Render automáticamente.
+Actualizar los archivos del repositorio vinculado al servicio existente,
+respetando su carpeta raíz. No cambiar NF_TOKEN ni NF_ADMIN_TOKEN.
+Antes de desplegar, revisar cómo se conservan los datos del servicio actual:
+DATA_DIR puede estar en disco efímero en Render. No desplegar sobre datos
+necesarios sin confirmar una copia o almacenamiento persistente.
+No se cambiaron autenticación, formato de datos ni permisos de los teléfonos.
+
+Verificación: 14 pruebas aprobadas, sin omisiones. Ejecutadas con jsdom 26
+y zona horaria del equipo Pacific/Honolulu para verificar hora argentina.
+Compatible con el protocolo de la app 0.12.8. No requiere reinstalar Android.

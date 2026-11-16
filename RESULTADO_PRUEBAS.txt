@@ -1,0 +1,22 @@
+✔ hora argentina 24 h y enlaces inmutables en alertas generales y del chofer (145.110344ms)
+✔ datos de alertas no ejecutan HTML ni crean enlaces con coordenadas inválidas (54.265833ms)
+✔ alerta conserva hora, velocidad y lugar aunque el móvil se mueva; exportación y reinicio (362.239074ms)
+✔ telemetría, autorización, zonas, consentimiento, duplicados y persistencia (375.413347ms)
+✔ dashcam sola sin GPS ni frontal; detenerla invalida imagen previa y rechaza envíos tardíos (127.107866ms)
+✔ solicitudes: consentimiento, entrega, activación confirmada y cámara protegida (268.969259ms)
+✔ vencimiento de una solicitud no entregada no se muestra como activación (1.100714ms)
+✔ formularios: fecha/hora visual, cálculo llegada, enlace zona y confirmación (194.845089ms)
+✔ enlaces Maps: punto explícito antes del centro, consulta y rango (2.186385ms)
+✔ enlaces cortos: redirecciones controladas sin consultar hosts ajenos (2.052223ms)
+✔ enlace opaco o demasiadas redirecciones: falla sin inventar punto (0.557207ms)
+✔ selección móvil: agrupa alertas y controles de un solo chofer (163.072087ms)
+✔ GPS y cámara independientes; datos antiguos y modelos anteriores no simulan actividad (2.985506ms)
+✔ API real: consentimiento, solicitud GPS, seguimiento confirmado, apagado y persistencia (294.372696ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 702.086704

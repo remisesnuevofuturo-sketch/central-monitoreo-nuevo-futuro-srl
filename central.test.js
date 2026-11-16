@@ -9,6 +9,11 @@ test('telemetría, autorización, zonas, consentimiento, duplicados y persistenc
  try{
  assert.equal((await req('/api/state')).status,401);assert.equal((await req('/api/login',{key:'bad'})).status,401);
  const login=await req('/api/login',{key:'office-key'});assert.equal(login.status,200);const admin={Cookie:login.cookie};
+ assert.equal((await req('/api/maps/resolve',{url:'https://www.google.com/maps?q=-34.5,-58.5'})).status,403);
+ assert.equal((await req('/api/maps/resolve',{url:'https://www.google.com/maps?q=-34.5,-58.5'},device)).status,403);
+ const mapPoint=await req('/api/maps/resolve',{url:'https://www.google.com/maps?q=-34.5,-58.5'},admin);assert.equal(mapPoint.status,200);assert.equal(mapPoint.data.lat,-34.5);
+ assert.equal((await req('/api/maps/resolve',{url:'https://127.0.0.1/private'},admin)).status,400);
+
  const t={vehicleId:'NF-TEST',lat:-34.5,lon:-58.5,speedKmh:20,monitoring:true,alert:'somnolencia_critica'};
  assert.equal((await req('/api/telemetry',t,device)).status,200);await req('/api/telemetry',t,device);
  let state=(await req('/api/state',null,admin)).data;assert.equal(state.vehicles.length,1);assert.equal(state.events.filter(e=>e.vehicleId==='NF-TEST').length,1);
